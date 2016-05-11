@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<node name="/">
+  <interface name="com.xk.interface">
+    <method name="Request">
+  		<arg type="i" direction="in"/>  
+    	<arg type="ay" direction="in"/>  
+    	<arg type="ay" direction="out"/>
+      	<arg type="i" direction="out"/>
+    </method>
+	<method name ="Call">
+	  <arg type="s" direction="in"/>
+	  <arg type="s" direction="out"/>
+	</method>
+	<signal name="SendSignal">
+	</signal>
+  </interface>
+</node>
