@@ -20,7 +20,7 @@ typedef void (*ON_REQUEST_FUNC)(const gint inCnt, const GArray* inArray, GArray*
 typedef void (*ON_CALL_FUNC)(const char * inStr, char ** outStr);
 
 void rayDbusInit(void);
-gboolean registerDbusServer(tRayDbusServer *t);
+gboolean registerDbusServer(char *connName,char *objName,void *onRequest,void *onCall);
 void rayDbusBroadCast(char *connName,char *message);
 void releaseRayDbus(char *connName);
 void rayDbusBroadCast(char *connName,char *message);

@@ -195,36 +195,24 @@ GMainContext *context;
 
 void serverThreadCall(gpointer data)
 {
-	//char *connName=(char *)data;
 	tRayDbusServer *tServer=(tRayDbusServer *)data;
-
 	GError *error = NULL;
-	printf("1\n");
 	GMainContext* context;
 	DBusGProxy *bus_proxy;
 	DbusModule *obj;
 	guint request_name_result;
 	context = g_main_context_new();
 	GMainLoop *loop = g_main_loop_new(context,FALSE);
-	
-	printf("2\n");
-
 	if(!context)
     {
        return;
     }
 	dbus_g_object_type_install_info (DBUS_TYPE_MODULE, &dbus_glib_dbus_module_object_info);
-	printf("3\n");
-
 	DBusGConnection *sessionbuss=getSessionBus(context);
-	printf("4\n");
 	//dbus_connection_setup_with_g_main(sessionbuss, context);
-	printf("5\n");
   	bus_proxy = dbus_g_proxy_new_for_name (sessionbuss, "org.freedesktop.DBus",
 					 "/org/freedesktop/DBus",
 					 "org.freedesktop.DBus");
-	printf("6\n");
-
   	if (!dbus_g_proxy_call (bus_proxy, "RequestName", &error,
 			  G_TYPE_STRING,tServer->connName,
 			  G_TYPE_UINT, 0,
@@ -249,14 +237,33 @@ void serverThreadCall(gpointer data)
 	g_main_context_unref(context);
 }
 
-gboolean registerDbusServer(tRayDbusServer *t)
+gboolean registerDbusServer(char *connName,char *objName,void *onRequest,void *onCall)
 {
 	GError*  error = NULL;
 	GThread* thread = NULL;
-
+	tRayDbusServer *t=(tRayDbusServer*)malloc(sizeof(tRayDbusServer));
+	sprintf(t->connName,"%s",connName);
+	sprintf(t->objectName,"%s",objName);
+	t->onRequest=onRequest;
+	t->onCall=onCall;
 	thread = g_thread_create((GThreadFunc)serverThreadCall, t, FALSE, &error);	
 }
 
+void releaseRayDbus(char *connName)
+{
+	tRayDbusServer *tt=getRayDbusServerByName(connName);
+	g_main_loop_quit (tt->loop);	
+}
+
+
+void rayDbusInit()
+{
+	g_type_init ();
+	if (!g_thread_supported ()) g_thread_init (NULL);
+	dbus_g_thread_init();	
+}
+
+/*
 void onRequest(const gint IN_arg0, const GArray* IN_arg1, GArray** OUT_arg2, gint* OUT_arg3)
 {
 	printf("------onRequest----\n");
@@ -278,19 +285,7 @@ void onCall(const char * IN_arg0, char ** OUT_arg1)
 	printf("-----onCall-------\n");
 }
 
-void releaseRayDbus(char *connName)
-{
-	tRayDbusServer *tt=getRayDbusServerByName(connName);
-	g_main_loop_quit (tt->loop);	
-}
 
-
-void rayDbusInit()
-{
-	g_type_init ();
-	if (!g_thread_supported ()) g_thread_init (NULL);
-	dbus_g_thread_init();	
-}
 
 int main(int argc,char *argv[])
 {
@@ -298,13 +293,8 @@ int main(int argc,char *argv[])
 	rayDbusInit();
 	mainLoop = g_main_loop_new (NULL, FALSE);
 	if (!g_thread_supported ()) g_thread_init (NULL);
-	tRayDbusServer server={0};
-	sprintf(server.connName,"%s","com.xk.service");
-	sprintf(server.objectName,"%s","/DbusModule");
-	server.onRequest=onRequest;
-	server.onCall=onCall;
-    registerDbusServer(&server);		
+    registerDbusServer("com.xk.service","/DbusModule",onRequest,onCall);		
 	g_main_loop_run (mainLoop);
 	return 0;
-}
+}*/
 
