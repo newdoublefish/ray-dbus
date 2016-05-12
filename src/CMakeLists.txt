@@ -2,5 +2,7 @@ INCLUDE_DIRECTORIES(/usr/include/dbus-1.0 /usr/lib/i386-linux-gnu/dbus-1.0/inclu
 SET(LIBS dbus-1 dbus-glib-1 gobject-2.0 glib-2.0)
 ADD_EXECUTABLE(dbus_module dbus_module.c)
 ADD_EXECUTABLE(dbus_request dbus_request.c)
+ADD_EXECUTABLE(dbus_xk dbus_xk.c)
 TARGET_LINK_LIBRARIES(dbus_module ${LIBS})
 TARGET_LINK_LIBRARIES(dbus_request ${LIBS})
+TARGET_LINK_LIBRARIES(dbus_xk ${LIBS})
