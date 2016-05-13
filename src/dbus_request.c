@@ -20,7 +20,6 @@ static gboolean emit_signal(gpointer arg)
 	return TRUE;
 }
 
-
 int main( int argc , char ** argv) 
 { 
     GError * error = NULL; 
@@ -63,14 +62,16 @@ int main( int argc , char ** argv)
 		g_array_append_val(gInputArray,index);
 		index++;
 	}
-
+	/*
 	com_xk_interface_request (proxy,8,gInputArray,&gOutputArray,&outputArg,&error);
   	gint temp=0;
   	printf("%d\n",outputArg);
   	for(temp=0;temp<outputArg;temp++)
   	{
 		printf("%d\n", g_array_index(gOutputArray, char,temp));
-  	}
+  	}*/
+
+	emit_signal(proxy);
 
 	
 	//printf("---end---\n");
@@ -80,7 +81,7 @@ int main( int argc , char ** argv)
 	{
 	  emit_signal(proxy);
 	}
-	g_timeout_add (2000, emit_signal, proxy);
-	g_main_loop_run (mainloop);*/
+	g_timeout_add (2000, emit_signal, proxy);*/
+	g_main_loop_run (mainloop);
 	return 0; 
 }

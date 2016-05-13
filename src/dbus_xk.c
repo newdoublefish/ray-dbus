@@ -6,6 +6,7 @@
 
 GSList *gsList=NULL;
 
+
 enum
 {
 	SEND_SIGNAL,
@@ -110,10 +111,11 @@ tRayDbusServer *getRayDbusServerByObj(DbusModule *obj)
     GSList *iterator = NULL;
     for (iterator = gsList; iterator; iterator = iterator->next) {	
 		tRayDbusServer *t=(tRayDbusServer*)(iterator->data);
-		printf("-------%s\n",t->connName);
+		if(t->type!=SERVER_TYPE)
+			continue;
+
 		if((DbusModule*)(t->obj)==obj)
 		{
-			printf("---find----\n");
 			return t;
 		}
     }
@@ -125,8 +127,9 @@ tRayDbusServer *getRayDbusServerByName(char *connName)
     GSList *iterator = NULL;
     for (iterator = gsList; iterator; iterator = iterator->next) {	
 		tRayDbusServer *t=(tRayDbusServer*)(iterator->data);
-		//printf("-------%s\n",t->connName);
-		if(strcmp(connName,t->connName)==0)//(DbusModule*)(t->obj)==obj)
+		if(t->type!=SERVER_TYPE)
+			continue;
+		if(strcmp(connName,t->connName)==0)
 		{
 			printf("---find----\n");
 			return t;
@@ -154,9 +157,9 @@ void rayDbusBroadCast(char *connName,char *message)
 
 gboolean dbus_module_request(DbusModule *obj, const gint IN_arg0, const GArray* IN_arg1, GArray** OUT_arg2, gint* OUT_arg3, GError **error)
 {
-  //dbus_module_emit_send_signal(obj,"signal dbus_module_request");
   tRayDbusServer *ts=getRayDbusServerByObj(obj);
-  (*(ON_REQUEST_FUNC)ts->onRequest)(IN_arg0,IN_arg1,OUT_arg2,OUT_arg3);
+  if(ts->onRequest!=NULL)
+  	(*(ON_REQUEST_FUNC)ts->onRequest)(IN_arg0,IN_arg1,OUT_arg2,OUT_arg3);
   
   
   return TRUE;
@@ -164,13 +167,9 @@ gboolean dbus_module_request(DbusModule *obj, const gint IN_arg0, const GArray* 
 static int count=0;
 gboolean dbus_module_call(DbusModule *obj, const char * IN_arg0, char ** OUT_arg1, GError **error)
 {
- 	char buffer[200]={0};
-	printf("%s\n",IN_arg0);
-	*OUT_arg1=g_strdup ("dbus_module_call");
-	sprintf(buffer,"dbus_module_call:count:%d",count++);
-	dbus_module_emit_send_signal(obj,buffer);
-	return TRUE;
-
+  	tRayDbusServer *ts=getRayDbusServerByObj(obj);
+	if(ts->onCall!=NULL)
+  		(*(ON_CALL_FUNC)ts->onCall)(IN_arg0,OUT_arg1);	
 }
 
 
@@ -246,6 +245,7 @@ gboolean registerDbusServer(char *connName,char *objName,void *onRequest,void *o
 	sprintf(t->objectName,"%s",objName);
 	t->onRequest=onRequest;
 	t->onCall=onCall;
+	t->type=SERVER_TYPE;
 	thread = g_thread_create((GThreadFunc)serverThreadCall, t, FALSE, &error);	
 }
 
@@ -263,38 +263,110 @@ void rayDbusInit()
 	dbus_g_thread_init();	
 }
 
-/*
-void onRequest(const gint IN_arg0, const GArray* IN_arg1, GArray** OUT_arg2, gint* OUT_arg3)
-{
-	printf("------onRequest----\n");
-  	gint temp=0;
-  	printf("%d\n",IN_arg0);
-  	* OUT_arg2=g_array_new(FALSE, FALSE, sizeof(char));
-  	for(temp=0;temp<IN_arg0;temp++)
-  	{
-		printf("%d\n", g_array_index(IN_arg1, char,temp));
-		g_array_append_val(* OUT_arg2,temp);
-  	}
-  	* OUT_arg3=8;	
-	//rayDbusBroadCast("com.xk.service","hello world\n");
-	releaseRayDbus("com.xk.service");
-}
+#include "dbus_request.h"
 
-void onCall(const char * IN_arg0, char ** OUT_arg1)
+void requestThreadCall(gpointer data)
 {
-	printf("-----onCall-------\n");
+	
 }
 
 
-
-int main(int argc,char *argv[])
+void rayDbusRequest(char *connName,void *onResponse)
 {
-	GMainLoop*	mainLoop;
-	rayDbusInit();
-	mainLoop = g_main_loop_new (NULL, FALSE);
-	if (!g_thread_supported ()) g_thread_init (NULL);
-    registerDbusServer("com.xk.service","/DbusModule",onRequest,onCall);		
-	g_main_loop_run (mainLoop);
-	return 0;
-}*/
+	GError*  error = NULL;
+	GThread* thread = NULL;	
+	thread = g_thread_create((GThreadFunc)requestThreadCall,NULL, FALSE, &error);
 
+}
+
+tRayDbusServer *getRayDbusSinalReceiverByObj(DBusGProxy *obj)
+{
+    GSList *iterator = NULL;
+	printf("-------1\n");
+    for (iterator = gsList; iterator; iterator = iterator->next) {	
+		tRayDbusServer *t=(tRayDbusServer*)(iterator->data);
+		printf("-----2:%s\n",t->connName);
+		if(t->type!=SIGNAL_TYPE)
+			continue;
+
+		if((DBusGProxy*)(t->obj)==obj)
+		{
+			return t;
+		}
+    }
+	return NULL;
+}
+
+
+static void send_signal_callback(DBusGProxy *proxy,const char *string,gpointer user_data)
+{
+	tRayDbusServer *tServer=getRayDbusSinalReceiverByObj(proxy);
+	if(tServer->onSignal!=NULL)
+		(*(ON_SIGNAL_FUNC)tServer->onSignal)(string);
+}
+
+void signalReceiverThreadCall(gpointer data)
+{
+	tRayDbusServer *tServer=(tRayDbusServer *)data;
+	GError *error = NULL;
+	GMainContext* context;
+	DBusGProxy *bus_proxy;
+	//DbusModule *obj;
+	
+	guint request_name_result;
+	context = g_main_context_new();	
+	if(!context)
+    {
+       return;
+    }
+	GMainLoop *loop = g_main_loop_new(context,FALSE);
+	
+	DBusGConnection *sessionbuss=getSessionBus(context);
+	//dbus_connection_setup_with_g_main(sessionbuss, context);
+  	bus_proxy= dbus_g_proxy_new_for_name (sessionbuss,tServer->connName,"/DbusModule","com.xk.interface");
+	tServer->obj=(void *)bus_proxy;
+	tServer->loop=loop;
+	dbus_g_proxy_add_signal(bus_proxy,"SendSignal",G_TYPE_STRING,G_TYPE_INVALID);
+	dbus_g_proxy_connect_signal(bus_proxy,"SendSignal",G_CALLBACK(send_signal_callback),NULL,NULL);	
+
+	printf("signal listening\n");     
+    if(!loop)
+    {
+      return;
+    }
+	gsList = g_slist_append(gsList,(gpointer)tServer);	
+	g_main_loop_run(loop);
+	printf("-------------quit--------------\n");
+	dbus_g_connection_close(sessionbuss);
+	dbus_g_connection_unref(sessionbuss);
+	g_main_context_unref(context);	
+}
+
+void rayDbusRegisterSignalReceiver(char *connName,void *onSignal)
+{
+	GError*  error = NULL;
+	GThread* thread = NULL;
+	tRayDbusServer *t=(tRayDbusServer*)malloc(sizeof(tRayDbusServer));
+	sprintf(t->connName,"%s",connName);
+	t->type=SIGNAL_TYPE;
+	t->onRequest=NULL;
+	t->onCall=NULL;
+	t->onSignal=onSignal;
+	thread = g_thread_create((GThreadFunc)signalReceiverThreadCall,t, FALSE, &error);
+}
+
+void rayDbusCall(char *connName,char *inpuStr,char **outputStr)
+{
+	GError * error = NULL; 
+	char *out_arg1;
+	DBusGProxy *bus_proxy ; 
+	GMainContext* context;
+	context = g_main_context_new();	
+	DBusGConnection *sessionbuss=getSessionBus(context);
+	bus_proxy= dbus_g_proxy_new_for_name (sessionbuss,connName,"/DbusModule","com.xk.interface");
+	com_xk_interface_call (bus_proxy,inpuStr,outputStr,&error);
+	dbus_g_connection_close(sessionbuss);
+	dbus_g_connection_unref(sessionbuss);
+	g_main_context_unref(context);		
+	//free(out_arg1); 	
+}
