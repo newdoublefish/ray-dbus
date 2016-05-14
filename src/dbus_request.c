@@ -44,7 +44,7 @@ int main( int argc , char ** argv)
         exit( 1 ); 
     }
     /* Create a proxy object for the 'bus driver' named org.freedesktop.DBus */ 
-    proxy = dbus_g_proxy_new_for_name (connection,"com.xk.service","/DbusModule","com.xk.interface"); 
+    proxy = dbus_g_proxy_new_for_name (connection,"com.demo.service","/DbusModule","com.xk.interface"); 
 
     /*com_xk_interface_request(proxy,"helloworld",outArg,&error);	
 	printf("%s,%s\n",(*outArg)[0],(*outArg)[1]);
@@ -54,16 +54,16 @@ int main( int argc , char ** argv)
 	dbus_g_proxy_connect_signal(proxy,"SendSignal",G_CALLBACK(send_signal_callback),NULL,NULL);
 
 
-
+/*
 	gInputArray=g_array_new(FALSE, FALSE, sizeof(char));
 	gchar index=0;
 	for(;inputArg>0;inputArg--)
 	{
 		g_array_append_val(gInputArray,index);
 		index++;
-	}
-	/*
-	com_xk_interface_request (proxy,8,gInputArray,&gOutputArray,&outputArg,&error);
+	}*/
+	
+	/*com_xk_interface_request (proxy,8,gInputArray,&gOutputArray,&outputArg,&error);
   	gint temp=0;
   	printf("%d\n",outputArg);
   	for(temp=0;temp<outputArg;temp++)
@@ -71,7 +71,7 @@ int main( int argc , char ** argv)
 		printf("%d\n", g_array_index(gOutputArray, char,temp));
   	}*/
 
-	emit_signal(proxy);
+	//emit_signal(proxy);
 
 	
 	//printf("---end---\n");
@@ -80,8 +80,8 @@ int main( int argc , char ** argv)
 	for(i=0;i<5;i++)
 	{
 	  emit_signal(proxy);
-	}
-	g_timeout_add (2000, emit_signal, proxy);*/
+	}*/
+	g_timeout_add (2000, emit_signal, proxy);
 	g_main_loop_run (mainloop);
 	return 0; 
 }
